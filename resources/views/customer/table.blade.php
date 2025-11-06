@@ -1,536 +1,529 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
+
+@php
+    use Illuminate\Support\Facades\Storage;
+    use Illuminate\Support\Str;
+@endphp
 
 @section('content')
-    <div class="grid gap-8 lg:grid-cols-[1.7fr_minmax(320px,1fr)]">
-        <section class="space-y-6">
-            <div class="rounded-3xl bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 px-8 py-10 text-white shadow-xl shadow-emerald-500/30">
-                <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <p class="text-sm uppercase tracking-[0.35em] text-white/70">Sesi Meja</p>
-                        <h1 class="mt-2 text-3xl font-semibold">Meja {{ $table->number }}</h1>
-                        <p class="mt-2 text-sm text-white/80">Kode QR: <span class="font-medium text-white">{{ $table->code }}</span></p>
-                        <p class="mt-3 text-sm text-white/80">Mulai {{ $session->started_at->translatedFormat('l, d F Y · H:i') }}</p>
-                    </div>
-                    <div class="flex flex-col items-start gap-3 md:items-end">
-                        <span class="inline-flex rounded-full bg-white/15 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-white">{{ $session->status }}</span>
-                        <a href="{{ url()->current() }}" class="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 transition hover:bg-white/20">
-                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 5v6h-6" />
-                                <path d="M3 19v-6h6" />
-                                <path d="M21 5c-1.5-1.5-3.79-2-6-2-5.52 0-10 4.48-10 10" />
-                                <path d="M3 19c1.5 1.5 3.79 2 6 2 5.52 0 10-4.48 10-10" />
-                            </svg>
-                            Muat ulang menu
-                        </a>
-                    </div>
+    <div class="space-y-8">
+        <section class="rounded-3xl bg-gradient-to-r from-emerald-500 via-emerald-400 to-teal-400 px-8 py-10 text-white shadow-xl shadow-emerald-500/30">
+            <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                <div class="space-y-3">
+                    <p class="text-sm uppercase tracking-[0.35em] text-white/70">Sesi Meja</p>
+                    <h1 class="text-3xl font-semibold">Meja {{ $table->number }}</h1>
+                    <p class="text-sm text-white/80">Kode QR: <span class="font-medium text-white">{{ $table->code }}</span></p>
+                    <p class="text-sm text-white/80">Mulai {{ $session->started_at->translatedFormat('l, d F Y · H:i') }}</p>
+                </div>
+                <div class="flex flex-col items-start gap-3 md:items-end">
+                    <span class="inline-flex rounded-full bg-white/15 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-white">{{ $session->status }}</span>
+                    <a href="{{ route('customer.checkout', $table->code) }}"
+                        data-cart-link
+                        class="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-4 py-2 text-sm font-semibold text-white/90 transition hover:bg-white/20">
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 3h18" />
+                            <path d="M3 9h18" />
+                            <path d="M3 15h12" />
+                            <path d="M3 21h6" />
+                        </svg>
+                        <span>Lihat keranjang</span>
+                        <span id="cart-count-top" class="hidden min-w-[1.6rem] rounded-full bg-white/20 px-2 py-0.5 text-center text-xs font-semibold text-white shadow-sm">0</span>
+                    </a>
                 </div>
             </div>
+        </section>
 
-            @foreach ($menus as $category => $items)
-                <section class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h2 class="text-lg font-semibold text-slate-800">{{ $category }}</h2>
-                            <p class="text-sm text-slate-500">{{ $items->count() }} pilihan tersedia</p>
-                        </div>
+        @foreach ($menus as $category => $items)
+            <section class="space-y-4">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 class="text-xl font-semibold text-slate-800">{{ $category }}</h2>
+                        <p class="text-sm text-slate-500">{{ $items->count() }} pilihan tersedia</p>
                     </div>
-                    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                        @foreach ($items as $menu)
-                            @php
-                                $menuPayload = [
-                                    'id' => $menu->id,
-                                    'name' => $menu->name,
-                                    'price' => $menu->price,
-                                    'options' => $menu->options->map(function ($option) {
-                                        return [
-                                            'id' => $option->id,
-                                            'name' => $option->name,
-                                            'extra_price' => $option->extra_price,
-                                        ];
-                                    })->values()->all(),
-                                ];
-                            @endphp
-                            <article class="group flex h-full flex-col justify-between rounded-3xl border border-slate-200/60 bg-white/90 p-6 shadow-sm shadow-slate-900/5 transition hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg">
+                </div>
+
+                <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                    @foreach ($items as $menu)
+                        @php
+                            $menuPayload = [
+                                'id' => $menu->id,
+                                'name' => $menu->name,
+                                'price' => $menu->price,
+                                'options' => $menu->options->map(function ($option) {
+                                    return [
+                                        'id' => $option->id,
+                                        'name' => $option->name,
+                                        'extra_price' => $option->extra_price,
+                                    ];
+                                })->values()->all(),
+                            ];
+
+                            $imageSource = null;
+
+                            if ($menu->image_url) {
+                                $imageSource = Str::startsWith($menu->image_url, ['http://', 'https://'])
+                                    ? $menu->image_url
+                                    : Storage::url($menu->image_url);
+                            }
+
+                            $menuDescription = Str::limit($menu->description ?: 'Menu spesial pilihan chef kami.', 120);
+                        @endphp
+                        <article class="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/60 bg-white shadow-sm shadow-slate-900/5 transition hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg">
+                            <div class="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
+                                @if ($imageSource)
+                                    <img src="{{ $imageSource }}" alt="{{ $menu->name }}" class="h-full w-full object-cover transition duration-500 group-hover:scale-105">
+                                @else
+                                    <div class="flex h-full w-full flex-col items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                        <svg class="h-8 w-8 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                            <polyline points="21 15 16 10 5 21"></polyline>
+                                        </svg>
+                                        <span>Foto belum tersedia</span>
+                                    </div>
+                                @endif
+                                <span class="absolute bottom-3 left-4 inline-flex items-center rounded-full bg-white/95 px-4 py-1 text-sm font-semibold text-emerald-600 shadow-sm shadow-emerald-500/20">
+                                    Rp {{ number_format($menu->price, 0, ',', '.') }}
+                                </span>
+                            </div>
+                            <div class="flex flex-1 flex-col justify-between p-6">
                                 <div class="space-y-3">
-                                    <div class="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-emerald-600">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                                        Favorit Resto
+                                    <div class="flex items-start justify-between gap-3">
+                                        <h3 class="text-base font-semibold text-slate-800">{{ $menu->name }}</h3>
+                                        <span class="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                            Stok {{ max($menu->stock, 0) }}
+                                        </span>
                                     </div>
-                                    <div class="flex items-start justify-between gap-4">
-                                        <div>
-                                            <h3 class="text-base font-semibold text-slate-800">{{ $menu->name }}</h3>
-                                            <p class="mt-2 text-sm leading-relaxed text-slate-500">{{ $menu->description ?? 'Menu spesial pilihan chef kami.' }}</p>
-                                        </div>
-                                        <span class="text-right text-lg font-semibold text-emerald-600">Rp {{ number_format($menu->price, 0, ',', '.') }}</span>
-                                    </div>
+                                    <p class="text-sm leading-relaxed text-slate-500">{{ $menuDescription }}</p>
 
                                     @if ($menu->options->isNotEmpty())
-                                        <div class="mt-3 flex flex-wrap gap-2">
+                                        <div class="flex flex-wrap gap-2 pt-1">
                                             @foreach ($menu->options as $option)
-                                                <span class="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-500">{{ $option->name }}@if ($option->extra_price)
-                                                        <span class="text-emerald-600"> +Rp {{ number_format($option->extra_price, 0, ',', '.') }}</span>
+                                                <span class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-600">
+                                                    {{ $option->name }}
+                                                    @if ($option->extra_price)
+                                                        <span class="text-emerald-500">+Rp {{ number_format($option->extra_price, 0, ',', '.') }}</span>
                                                     @endif
                                                 </span>
                                             @endforeach
                                         </div>
                                     @endif
                                 </div>
-                                <button
-                                    data-menu='@json($menuPayload)'
-                                    class="mt-6 inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600">
-                                    Tambah ke Keranjang
-                                </button>
-                            </article>
-                        @endforeach
-                    </div>
-                </section>
-            @endforeach
-        </section>
-
-        <aside class="space-y-6">
-            <div class="rounded-3xl border border-slate-200/60 bg-white/90 p-6 shadow-sm shadow-slate-900/5">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-slate-800">Keranjang</h3>
-                    <button id="clear-cart" class="text-xs font-medium text-emerald-600 hover:text-emerald-700">Kosongkan</button>
+                                <div class="mt-6 space-y-2">
+                                    <button
+                                        data-menu='@json($menuPayload)'
+                                        class="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-500/30 transition hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-white">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <circle cx="9" cy="21" r="1"></circle>
+                                            <circle cx="20" cy="21" r="1"></circle>
+                                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                        </svg>
+                                        Tambah ke Keranjang
+                                    </button>
+                                    @if ($menu->options->isNotEmpty())
+                                        <button type="button"
+                                            data-menu-addons='@json($menuPayload)'
+                                            class="inline-flex w-full items-center justify-center gap-2 rounded-full border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-600 shadow-sm shadow-emerald-500/10 transition hover:border-emerald-300 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:ring-offset-2 focus:ring-offset-white">
+                                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M12 5v14" />
+                                                <path d="M5 12h14" />
+                                            </svg>
+                                            Pilih addon
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+                        </article>
+                    @endforeach
                 </div>
-                <p class="mt-1 text-sm text-slate-500">Periksa kembali pesanan Anda sebelum dikirim ke dapur.</p>
-
-                <div id="cart-empty" class="mt-6 rounded-2xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
-                    Belum ada item di keranjang.
-                </div>
-                <div id="cart-items" class="mt-4 hidden space-y-4 text-sm"></div>
-
-                <div class="mt-6 space-y-2 rounded-2xl bg-slate-50 px-4 py-4 text-sm">
-                    <div class="flex justify-between text-slate-600">
-                        <span>Subtotal</span>
-                        <span id="subtotal">Rp 0</span>
-                    </div>
-                    <div class="flex justify-between text-slate-500">
-                        <span>Estimasi Pajak (10%)</span>
-                        <span id="tax">Rp 0</span>
-                    </div>
-                    <div class="flex justify-between text-slate-500">
-                        <span>Service (5%)</span>
-                        <span id="service">Rp 0</span>
-                    </div>
-                    <div class="flex justify-between border-t border-slate-200 pt-3 text-base font-semibold text-slate-800">
-                        <span>Total Pembayaran</span>
-                        <span id="grand-total">Rp 0</span>
-                    </div>
-                </div>
-
-                <form id="order-form" class="mt-6 space-y-4">
-                    @csrf
-                    <label class="block text-sm font-medium text-slate-600">
-                        Catatan
-                        <textarea name="notes" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-inner focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100" rows="3" placeholder="Contoh: kurang pedas, sambal pisah"></textarea>
-                    </label>
-                    <label class="block text-sm font-medium text-slate-600">
-                        Metode Pembayaran
-                        <select name="payment_method" class="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100">
-                            <option value="CASH">Bayar di Kasir</option>
-                            <option value="QRIS">QRIS</option>
-                        </select>
-                    </label>
-                    <button type="submit" class="inline-flex w-full items-center justify-center rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-500/40 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300" disabled>
-                        Kirim Pesanan ke Dapur
-                    </button>
-                </form>
-                <div id="order-feedback" class="mt-3 text-sm text-slate-500"></div>
-            </div>
-
-            <div class="rounded-3xl border border-slate-200/60 bg-white/90 p-6 shadow-sm shadow-slate-900/5">
-                <h3 class="text-lg font-semibold text-slate-800">Status Pesanan</h3>
-                <p class="mt-1 text-sm text-slate-500">Pantau progres pesanan yang sudah dikirim.</p>
-                <ul id="order-status-list" class="mt-4 space-y-3 text-sm text-slate-600">
-                    <li>Belum ada pesanan.</li>
-                </ul>
-            </div>
-        </aside>
+            </section>
+        @endforeach
     </div>
 
-    <script>
-        const tableCode = @json($table->code);
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        const cart = [];
-        const rates = { tax: 0.1, service: 0.05 };
+    <a href="{{ route('customer.checkout', $table->code) }}"
+        data-cart-trigger
+        class="group fixed bottom-6 right-6 inline-flex items-center gap-3 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/40 transition hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-white lg:hidden">
+        <span class="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 3h2l.4 2M7 13h10l1.5-6H5.4" />
+                <circle cx="9" cy="20" r="1" />
+                <circle cx="18" cy="20" r="1" />
+            </svg>
+        </span>
+        <span>Keranjang</span>
+        <span id="cart-count" class="hidden h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-white/90 px-2 text-xs font-semibold text-emerald-600 shadow-sm shadow-emerald-200">0</span>
+    </a>
 
-        const cartEmpty = document.getElementById('cart-empty');
-        const cartItemsContainer = document.getElementById('cart-items');
-        const subtotalEl = document.getElementById('subtotal');
-        const taxEl = document.getElementById('tax');
-        const serviceEl = document.getElementById('service');
-        const grandTotalEl = document.getElementById('grand-total');
-        const orderForm = document.getElementById('order-form');
-        const submitBtn = orderForm.querySelector('button[type="submit"]');
-        const feedbackEl = document.getElementById('order-feedback');
-        const statusList = document.getElementById('order-status-list');
-        const orderStatuses = new Map();
-        const clearCartBtn = document.getElementById('clear-cart');
-        const initialOrders = @json($orders);
-        const statusFlow = [
-            { key: 'PLACED', label: 'Pesanan diterima' },
-            { key: 'IN_PROGRESS', label: 'Sedang diproses di dapur' },
-            { key: 'READY', label: 'Siap disajikan' },
-            { key: 'SERVED', label: 'Sudah disajikan' },
-            { key: 'PAID', label: 'Pembayaran selesai' },
-        ];
-        const statusPriority = statusFlow.reduce((map, step, index) => {
-            map[step.key] = index;
-            return map;
-        }, {});
-        const statusDisplayMap = {
-            PLACED: 'Menunggu diproses',
-            IN_PROGRESS: 'Sedang diproses',
-            READY: 'Siap disajikan',
-            SERVED: 'Sudah disajikan',
-            PAID: 'Pembayaran selesai',
-        };
-        const finalOrderStatuses = new Set(['PAID', 'CLOSED']);
+    <div id="cart-toast" class="pointer-events-none fixed bottom-24 right-6 hidden min-w-[200px] max-w-xs translate-y-2 items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/40 opacity-0 transition duration-200 ease-out lg:right-10">
+        <svg class="h-4 w-4 flex-none text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 13l4 4L19 7" />
+        </svg>
+        <span id="cart-toast-message">Ditambahkan ke keranjang</span>
+    </div>
 
-        function formatCurrency(value) {
-            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
-        }
-
-        function renderCart() {
-            if (cart.length === 0) {
-                cartEmpty.classList.remove('hidden');
-                cartItemsContainer.classList.add('hidden');
-                submitBtn.disabled = true;
-            } else {
-                cartEmpty.classList.add('hidden');
-                cartItemsContainer.classList.remove('hidden');
-                submitBtn.disabled = false;
-            }
-
-            cartItemsContainer.innerHTML = '';
-
-            let subtotal = 0;
-
-            cart.forEach((item, index) => {
-                const linePrice = (item.price + item.optionTotal) * item.qty;
-                subtotal += linePrice;
-                const wrapper = document.createElement('div');
-                wrapper.className = 'rounded-2xl border border-slate-200 px-4 py-3';
-                wrapper.innerHTML = `
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="space-y-1">
-                            <p class="font-semibold text-slate-700">${item.name}</p>
-                            <p class="text-xs text-slate-500">${formatCurrency(item.price)} · ${item.qty} porsi</p>
-                            ${item.notes ? `<p class="text-xs text-slate-400">Catatan: ${item.notes}</p>` : ''}
-                        </div>
-                        <div class="text-right">
-                            <p class="text-sm font-semibold text-slate-700">${formatCurrency(linePrice)}</p>
-                            <button data-index="${index}" class="mt-2 text-xs font-semibold text-rose-500 hover:text-rose-600">Hapus</button>
-                        </div>
-                    </div>
-                `;
-                cartItemsContainer.appendChild(wrapper);
-            });
-
-            const tax = subtotal * rates.tax;
-            const service = subtotal * rates.service;
-            const grand = subtotal + tax + service;
-
-            subtotalEl.textContent = formatCurrency(subtotal);
-            taxEl.textContent = formatCurrency(tax);
-            serviceEl.textContent = formatCurrency(service);
-            grandTotalEl.textContent = formatCurrency(grand);
-        }
-
-        document.querySelectorAll('[data-menu]').forEach((button) => {
-            button.addEventListener('click', () => {
-                const data = JSON.parse(button.dataset.menu);
-                const qty = 1;
-                cart.push({
-                    menu_id: data.id,
-                    name: data.name,
-                    price: Number(data.price),
-                    options: [],
-                    optionTotal: 0,
-                    qty,
-                    notes: '',
-                });
-                renderCart();
-            });
-        });
-
-        if (clearCartBtn) {
-            clearCartBtn.addEventListener('click', () => {
-                cart.length = 0;
-                renderCart();
-            });
-        }
-
-        cartItemsContainer.addEventListener('click', (event) => {
-            if (event.target.matches('button[data-index]')) {
-                const index = Number(event.target.dataset.index);
-                cart.splice(index, 1);
-                renderCart();
-            }
-        });
-
-        orderForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            submitBtn.disabled = true;
-            feedbackEl.textContent = 'Mengirim pesanan...';
-
-            const formData = new FormData(orderForm);
-            const payload = {
-                table_code: tableCode,
-                notes: formData.get('notes'),
-                items: cart.map((item) => ({
-                    menu_id: item.menu_id,
-                    qty: item.qty,
-                    options: item.options,
-                    notes: item.notes,
-                })),
-                payment: {
-                    method: formData.get('payment_method'),
-                },
-            };
-
-            const response = await fetch('{{ route('order.store') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                cart.length = 0;
-                renderCart();
-                data.order.table_code = tableCode;
-                data.order.created_at = data.order.created_at ?? new Date().toISOString();
-                feedbackEl.textContent = data.message;
-                appendStatus(data.order);
-            } else {
-                const error = await response.json().catch(() => ({ message: 'Terjadi kesalahan.' }));
-                feedbackEl.textContent = error.message || 'Terjadi kesalahan saat mengirim pesanan.';
-            }
-
-            submitBtn.disabled = cart.length === 0;
-        });
-
-        function appendStatus(order) {
-            if (order.table_code && order.table_code !== tableCode) {
-                return;
-            }
-
-            if (! isOrderActive(order.status)) {
-                orderStatuses.delete(order.id);
-                renderStatusList();
-                return;
-            }
-
-            const current = orderStatuses.get(order.id) || {};
-            const merged = enrichOrderData(current, order);
-
-            orderStatuses.set(merged.id, merged);
-
-            renderStatusList();
-        }
-
-        function isOrderActive(status) {
-            return ! finalOrderStatuses.has(status);
-        }
-
-        function enrichOrderData(existing, incoming) {
-            const mergedPayments = Array.isArray(incoming.payments) && incoming.payments.length > 0
-                ? incoming.payments
-                : existing.payments || [];
-
-            const merged = {
-                ...existing,
-                ...incoming,
-                payments: mergedPayments,
-            };
-
-            if (! merged.table_code) {
-                merged.table_code = tableCode;
-            }
-
-            merged.created_at = merged.created_at || existing.created_at || null;
-
-            const latestPayment = determineLatestPayment(merged);
-
-            merged.latest_payment_status = incoming.latest_payment_status
-                ?? existing.latest_payment_status
-                ?? latestPayment?.status
-                ?? null;
-
-            merged.latest_payment_method = incoming.latest_payment_method
-                ?? existing.latest_payment_method
-                ?? latestPayment?.method
-                ?? null;
-
-            if (merged.status === 'PAID' && merged.latest_payment_status !== 'SUCCESS') {
-                merged.latest_payment_status = 'SUCCESS';
-            }
-
-            return merged;
-        }
-
-        function determineLatestPayment(order) {
-            const payments = Array.isArray(order.payments) ? order.payments.slice() : [];
-
-            if (payments.length === 0) {
-                return null;
-            }
-
-            return payments.sort((a, b) => {
-                return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-            })[0];
-        }
-
-        function renderStatusList() {
-            statusList.innerHTML = '';
-
-            if (orderStatuses.size === 0) {
-                const emptyState = document.createElement('li');
-                emptyState.textContent = 'Belum ada pesanan.';
-                statusList.appendChild(emptyState);
-                return;
-            }
-
-            const sortedOrders = Array.from(orderStatuses.values()).sort((a, b) => {
-                return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-            });
-
-            sortedOrders.forEach((order) => {
-                statusList.appendChild(buildStatusCard(order));
-            });
-        }
-
-        function buildStatusCard(order) {
-            const item = document.createElement('li');
-            item.className = 'space-y-3 rounded-2xl border border-slate-200 px-4 py-4';
-
-            const statusLabel = humanizeStatus(order.status);
-            const statusIndex = resolveStatusIndex(order.status);
-
-            item.innerHTML = `
-                <div class="flex items-start justify-between gap-3">
-                    <div>
-                        <p class="text-sm font-semibold text-slate-700">${order.code}</p>
-                        ${order.created_at ? `<p class="text-xs text-slate-400">Dibuat ${formatShortDate(order.created_at)}</p>` : ''}
-                    </div>
-                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">${statusLabel}</span>
+    <dialog id="addon-modal" class="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-0 shadow-2xl shadow-slate-900/30">
+        <div class="space-y-5 p-6">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h3 id="addon-modal-title" class="text-lg font-semibold text-slate-800">Pilih addon</h3>
+                    <p id="addon-modal-description" class="mt-1 text-sm text-slate-500"></p>
                 </div>
-                <div class="space-y-2">
-                    ${renderStatusSteps(order, statusIndex)}
-                </div>
-                ${buildPaymentWarning(order)}
-            `;
-
-            return item;
-        }
-
-        function renderStatusSteps(order, statusIndex) {
-            return statusFlow.map((step, index) => {
-                const reached = isStepReached(order, step, index, statusIndex);
-                const indicatorClass = reached ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400';
-                const textClass = reached ? 'text-slate-700' : 'text-slate-400';
-                const indicatorText = reached ? '&#10003;' : index + 1;
-
-                return `
-                    <div class="flex items-center gap-3">
-                        <span class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${indicatorClass}">
-                            ${indicatorText}
-                        </span>
-                        <span class="text-xs font-medium ${textClass}">${step.label}</span>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function isStepReached(order, step, stepIndex, statusIndex) {
-            if (step.key === 'PAID') {
-                return order.status === 'PAID' || getLatestPaymentStatus(order) === 'SUCCESS';
-            }
-
-            return stepIndex <= statusIndex;
-        }
-
-        function humanizeStatus(status) {
-            return statusDisplayMap[status] ?? status.replace(/_/g, ' ');
-        }
-
-        function resolveStatusIndex(status) {
-            return statusPriority[status] ?? 0;
-        }
-
-        function getLatestPaymentStatus(order) {
-            if (order.latest_payment_status) {
-                return order.latest_payment_status;
-            }
-
-            const latest = determineLatestPayment(order);
-            return latest?.status ?? null;
-        }
-
-        function buildPaymentWarning(order) {
-            if (order.status === 'PAID') {
-                return '';
-            }
-
-            const latestStatus = getLatestPaymentStatus(order);
-
-            if (! latestStatus || latestStatus === 'SUCCESS') {
-                return '';
-            }
-
-            const message = latestStatus === 'FAILED'
-                ? 'Pembayaran sebelumnya gagal. Mohon lakukan pelunasan di kasir.'
-                : 'Pembayaran belum selesai. Mohon melunasi di kasir.';
-
-            return `
-                <div class="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
-                    <svg class="h-4 w-4 text-amber-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M8.257 3.099a1 1 0 011.486 0l5.579 9.92c.444.79-.111 1.781-.993 1.781H3.672c-.882 0-1.437-.991-.993-1.78l5.578-9.921zM10 7a.75.75 0 00-.75.75v3.5a.75.75 0 001.5 0v-3.5A.75.75 0 0010 7zm0 6a1 1 0 100 2 1 1 0 000-2z" clip-rule="evenodd" />
+                <button type="button" data-addon-close class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition hover:border-slate-300 hover:text-slate-600">
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m9 9 6 6" />
+                        <path d="m15 9-6 6" />
                     </svg>
-                    <span>${message}</span>
+                </button>
+            </div>
+            <form id="addon-form" class="space-y-5">
+                <div id="addon-options" class="space-y-3">
+                    <p class="text-sm text-slate-400">Menu ini belum memiliki addon.</p>
                 </div>
-            `;
-        }
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <span class="text-sm font-semibold text-slate-600">
+                        Total addon: <span id="addon-total">Rp 0</span>
+                    </span>
+                    <div class="flex gap-2">
+                        <button type="button" data-addon-cancel class="inline-flex items-center rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:text-slate-700">
+                            Batal
+                        </button>
+                        <button type="submit" class="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-2 text-xs font-semibold text-white shadow-sm shadow-emerald-500/30 transition hover:bg-emerald-600">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 5v14" />
+                                <path d="M5 12h14" />
+                            </svg>
+                            Tambahkan
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </dialog>
 
-        function formatShortDate(value) {
-            const parsed = new Date(value);
+    <script>
+        (function () {
+            const tableCode = @json($table->code);
+            const cartKey = `kahuripan-cart-${tableCode}`;
+            const trigger = document.querySelector('[data-cart-trigger]');
+            const cartBadge = document.getElementById('cart-count');
+            const topCartLink = document.querySelector('[data-cart-link]');
+            const cartBadgeTop = document.getElementById('cart-count-top');
+            const toast = document.getElementById('cart-toast');
+            const toastMessage = document.getElementById('cart-toast-message');
+            const addonModal = document.getElementById('addon-modal');
+            const addonForm = document.getElementById('addon-form');
+            const addonOptions = document.getElementById('addon-options');
+            const addonTitle = document.getElementById('addon-modal-title');
+            const addonDescription = document.getElementById('addon-modal-description');
+            const addonTotal = document.getElementById('addon-total');
+            const addonDismissButtons = addonModal ? addonModal.querySelectorAll('[data-addon-close], [data-addon-cancel]') : [];
+            const currencyFormatter = new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                maximumFractionDigits: 0,
+            });
+            let toastTimeout = null;
+            let activeMenu = null;
 
-            if (Number.isNaN(parsed.getTime())) {
-                return '';
+            function signatureFor(menuId, options) {
+                const source = Array.isArray(options) ? options : [];
+                const optionKeys = source
+                    .map((option) => {
+                        if (option && typeof option === 'object') {
+                            if (option.id !== undefined && option.id !== null) {
+                                return option.id;
+                            }
+
+                            if (option.name !== undefined && option.name !== null) {
+                                return option.name;
+                            }
+                        }
+
+                        return option;
+                    })
+                    .map((value) => String(value));
+
+                optionKeys.sort();
+
+                return JSON.stringify({
+                    menu_id: menuId,
+                    options: optionKeys,
+                });
             }
 
-            return parsed.toLocaleString('id-ID', {
-                day: 'numeric',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-            });
-        }
-
-        function bootstrapInitialOrders() {
-            if (! Array.isArray(initialOrders)) {
-                return;
+            function formatCurrency(value) {
+                return currencyFormatter.format(Number(value) || 0);
             }
 
-            initialOrders.forEach((order) => {
-                appendStatus(order);
-            });
-        }
-
-        bootstrapInitialOrders();
-
-        if (window.Echo) {
-            window.Echo.channel('orders').listen('.order.updated', (event) => {
-                if (event.table_code !== tableCode) {
+            function updateAddonTotal() {
+                if (! addonOptions || ! addonTotal) {
                     return;
                 }
-                appendStatus(event);
+
+                let total = 0;
+
+                addonOptions.querySelectorAll('input[type="checkbox"]:checked').forEach((input) => {
+                    const priceValue = input.dataset && input.dataset.price ? input.dataset.price : 0;
+                    total += Number(priceValue || 0);
+                });
+
+                addonTotal.textContent = formatCurrency(total);
+            }
+
+            function openAddonModal(menu) {
+                if (! addonModal || ! addonForm || ! addonOptions) {
+                    return;
+                }
+
+                activeMenu = menu;
+                addonTitle.textContent = `Addon ${menu.name}`;
+                addonDescription.textContent = 'Pilih tambahan yang ingin disertakan untuk menu ini.';
+                addonOptions.innerHTML = '';
+
+                const options = Array.isArray(menu.options) ? menu.options : [];
+
+                if (options.length === 0) {
+                    addonOptions.innerHTML = '<p class="rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-400">Menu ini belum memiliki addon.</p>';
+                } else {
+                    options.forEach((option) => {
+                        const optionIdentifier = option && option.id !== undefined && option.id !== null
+                            ? option.id
+                            : (option && option.name !== undefined && option.name !== null ? option.name : '');
+                        const inputId = `addon-${menu.id}-${optionIdentifier}`.replace(/[^a-zA-Z0-9-_]/g, '');
+                        const wrapper = document.createElement('label');
+                        wrapper.className = 'flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm';
+
+                        wrapper.innerHTML = `
+                            <span class="flex items-center gap-3">
+                                <input type="checkbox" id="${inputId}" value="${optionIdentifier}"
+                                    data-name="${option.name}"
+                                    data-price="${Number(option.extra_price || 0)}"
+                                    class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                                <span class="font-medium text-slate-700">${option.name}</span>
+                            </span>
+                            <span class="text-xs font-semibold text-emerald-600">+${formatCurrency(option.extra_price || 0)}</span>
+                        `;
+
+                        const input = wrapper.querySelector('input');
+                        input.addEventListener('change', updateAddonTotal);
+
+                        addonOptions.appendChild(wrapper);
+                    });
+                }
+
+                updateAddonTotal();
+
+                if (typeof addonModal.showModal === 'function') {
+                    addonModal.showModal();
+                } else {
+                    addonModal.setAttribute('open', 'true');
+                    addonModal.classList.add('open');
+                }
+            }
+
+            function closeAddonModal() {
+                if (! addonModal) {
+                    return;
+                }
+
+                activeMenu = null;
+                if (addonOptions) {
+                    addonOptions.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+                        input.checked = false;
+                    });
+                    updateAddonTotal();
+                }
+
+                if (typeof addonModal.close === 'function') {
+                    addonModal.close();
+                } else {
+                    addonModal.removeAttribute('open');
+                    addonModal.classList.remove('open');
+                }
+            }
+
+            function migrateCart(raw) {
+                if (! Array.isArray(raw)) {
+                    return [];
+                }
+
+                return raw
+                    .filter((item) => item && item.menu_id)
+                    .map((item) => ({
+                        signature: item.signature !== undefined && item.signature !== null
+                            ? item.signature
+                            : signatureFor(item.menu_id, item.options),
+                        menu_id: item.menu_id,
+                        name: item.name !== undefined && item.name !== null ? item.name : '',
+                        price: Number(item.price || 0),
+                        options: Array.isArray(item.options) ? item.options : [],
+                        optionTotal: Number(item.optionTotal || 0),
+                        qty: Math.max(Number(item.qty || 1), 1),
+                        notes: item.notes !== undefined && item.notes !== null ? item.notes : '',
+                    }));
+            }
+
+            function loadCart() {
+                try {
+                    const stored = localStorage.getItem(cartKey);
+
+                    if (! stored) {
+                        return [];
+                    }
+
+                    const parsed = JSON.parse(stored);
+
+                    return migrateCart(parsed);
+                } catch (error) {
+                    console.warn('Gagal memuat keranjang dari penyimpanan lokal.', error);
+                    return [];
+                }
+            }
+
+            let cart = loadCart();
+
+            function updateBadge() {
+                const totalItems = cart.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+
+                if (cartBadge) {
+                    cartBadge.textContent = totalItems;
+                    cartBadge.classList.toggle('hidden', totalItems === 0);
+                }
+
+                if (cartBadgeTop) {
+                    cartBadgeTop.textContent = totalItems;
+                    cartBadgeTop.classList.toggle('hidden', totalItems === 0);
+                }
+
+                if (trigger) {
+                    trigger.classList.toggle('opacity-80', totalItems === 0);
+                }
+
+                if (topCartLink) {
+                    topCartLink.classList.toggle('opacity-80', totalItems === 0);
+                }
+            }
+
+            function persistCart() {
+                try {
+                    localStorage.setItem(cartKey, JSON.stringify(cart));
+                } catch (error) {
+                    console.warn('Gagal menyimpan keranjang.', error);
+                }
+
+                updateBadge();
+            }
+
+            function showToast(message) {
+                if (! toast || ! toastMessage) {
+                    return;
+                }
+
+                toastMessage.textContent = message;
+                toast.classList.remove('hidden');
+                toast.classList.add('flex');
+                requestAnimationFrame(() => {
+                    toast.classList.remove('opacity-0', 'translate-y-2');
+                    toast.classList.add('opacity-100', '-translate-y-2');
+                });
+
+                clearTimeout(toastTimeout);
+                toastTimeout = setTimeout(() => {
+                    toast.classList.remove('opacity-100', '-translate-y-2');
+                    toast.classList.add('opacity-0', 'translate-y-2');
+                    setTimeout(() => toast.classList.add('hidden'), 200);
+                }, 1800);
+            }
+
+            if (addonModal) {
+                addonModal.addEventListener('cancel', (event) => {
+                    event.preventDefault();
+                    closeAddonModal();
+                });
+            }
+
+            addonDismissButtons.forEach((button) => {
+                button.addEventListener('click', () => closeAddonModal());
             });
-        }
+
+            document.querySelectorAll('[data-menu]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const data = JSON.parse(button.dataset.menu);
+                    const signature = signatureFor(data.id, []);
+                    const existing = cart.find((item) => item.signature === signature);
+
+                    if (existing) {
+                        existing.qty = Number(existing.qty || 0) + 1;
+                    } else {
+                        cart.push({
+                            signature,
+                            menu_id: data.id,
+                            name: data.name,
+                            price: Number(data.price),
+                            options: [],
+                            optionTotal: 0,
+                            qty: 1,
+                            notes: '',
+                        });
+                    }
+
+                    persistCart();
+                    showToast(`${data.name} ditambahkan ke keranjang`);
+                });
+            });
+
+            document.querySelectorAll('[data-menu-addons]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const data = JSON.parse(button.dataset.menuAddons);
+                    openAddonModal(data);
+                });
+            });
+
+            if (addonForm) {
+                addonForm.addEventListener('submit', (event) => {
+                    event.preventDefault();
+
+                    if (! activeMenu) {
+                        closeAddonModal();
+                        return;
+                    }
+
+                    const selected = [];
+
+                    addonOptions.querySelectorAll('input[type="checkbox"]:checked').forEach((input) => {
+                        selected.push({
+                            id: Number.isNaN(Number(input.value)) ? input.value : Number(input.value),
+                            name: input.dataset ? input.dataset.name : '',
+                            extra_price: Number((input.dataset && input.dataset.price) ? input.dataset.price : 0),
+                        });
+                    });
+
+                    const signature = signatureFor(activeMenu.id, selected);
+                    const optionTotal = selected.reduce((sum, option) => sum + Number(option.extra_price || 0), 0);
+                    const existing = cart.find((item) => item.signature === signature);
+
+                    if (existing) {
+                        existing.qty = Number(existing.qty || 0) + 1;
+                    } else {
+                        cart.push({
+                            signature,
+                            menu_id: activeMenu.id,
+                            name: activeMenu.name,
+                            price: Number(activeMenu.price),
+                            options: selected,
+                            optionTotal,
+                            qty: 1,
+                            notes: '',
+                        });
+                    }
+
+                    persistCart();
+                    showToast(`${activeMenu.name} ditambahkan ke keranjang`);
+                    closeAddonModal();
+                });
+            }
+
+            updateBadge();
+        })();
     </script>
 @endsection

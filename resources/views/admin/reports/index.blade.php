@@ -1,6 +1,13 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('content')
+    @php
+        $exportQuery = array_filter([
+            'start_date' => request('start_date', $start->format('Y-m-d')),
+            'end_date' => request('end_date', $end->format('Y-m-d')),
+        ]);
+    @endphp
+
     <div class="space-y-8">
         <form method="GET" class="rounded-3xl border border-slate-200/60 bg-white/90 p-6 shadow-sm shadow-slate-900/5 text-sm text-slate-600">
             <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -8,8 +15,31 @@
                     <p class="text-xs uppercase tracking-[0.35em] text-emerald-500">Laporan Penjualan</p>
                     <h2 class="text-xl font-semibold text-slate-800">Ringkasan Transaksi</h2>
                 </div>
-                <div class="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                    Total Pendapatan · Rp {{ number_format($totalRevenue, 0, ',', '.') }}
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                        Total Pendapatan · Rp {{ number_format($totalRevenue, 0, ',', '.') }}
+                    </div>
+                    <div class="flex gap-2">
+                        <a href="{{ route('admin.reports.export.excel', $exportQuery) }}"
+                            class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-600">
+                            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 4h16v16H4z" />
+                                <path d="m7 7 10 10" />
+                                <path d="m17 7-10 10" />
+                            </svg>
+                            Excel
+                        </a>
+                        <a href="{{ route('admin.reports.export.pdf', $exportQuery) }}"
+                            class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-600">
+                            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M6 2h7l5 5v15H6z" />
+                                <path d="M13 2v5h5" />
+                                <path d="M9 13h1a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H9v-4Z" />
+                                <path d="M9 17h2" />
+                            </svg>
+                            PDF
+                        </a>
+                    </div>
                 </div>
             </div>
             <div class="mt-6 grid gap-4 md:grid-cols-5">
@@ -60,7 +90,11 @@
                                 </td>
                                 <td class="px-4 py-3 text-right font-semibold text-slate-800">Rp {{ number_format($order->grand_total, 0, ',', '.') }}</td>
                                 <td class="px-4 py-3 text-right text-slate-500">
-                                    {{ $successPayment ? $successPayment->method.' · '.optional($successPayment->paid_at)->format('d/m H:i') : '-' }}
+                                    @if ($successPayment)
+                                        {{ $successPayment->method }} {{ $successPayment->paid_at ? '· '.$successPayment->paid_at->format('d/m H:i') : '' }}
+                                    @else
+                                        -
+                                    @endif
                                 </td>
                             </tr>
                         @empty

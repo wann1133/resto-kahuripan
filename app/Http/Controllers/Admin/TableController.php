@@ -17,6 +17,16 @@ class TableController extends Controller
         return view('admin.tables.index', compact('tables'));
     }
 
+    public function create()
+    {
+        return view('admin.tables.create');
+    }
+
+    public function edit(Table $table)
+    {
+        return view('admin.tables.edit', compact('table'));
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -25,11 +35,11 @@ class TableController extends Controller
         ]);
 
         $data['code'] = Str::upper(Str::random(6));
-        $data['is_active'] = $data['is_active'] ?? true;
+        $data['is_active'] = $request->boolean('is_active', true);
 
         Table::create($data);
 
-        return redirect()->back()->with('success', 'Meja berhasil dibuat.');
+        return redirect()->route('admin.tables.index')->with('success', 'Meja berhasil dibuat.');
     }
 
     public function update(Request $request, Table $table)
@@ -39,23 +49,24 @@ class TableController extends Controller
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
+        $data['is_active'] = $request->boolean('is_active');
+
         $table->update($data);
 
-        return redirect()->back()->with('success', 'Meja diperbarui.');
+        return redirect()->route('admin.tables.index')->with('success', 'Meja diperbarui.');
     }
 
     public function regenerate(Table $table)
     {
         $table->update(['code' => Str::upper(Str::random(6))]);
 
-        return redirect()->back()->with('success', 'QR code meja diperbarui.');
+        return redirect()->route('admin.tables.index')->with('success', 'QR code meja diperbarui.');
     }
 
     public function destroy(Table $table)
     {
         $table->delete();
 
-        return redirect()->back()->with('success', 'Meja dihapus.');
+        return redirect()->route('admin.tables.index')->with('success', 'Meja dihapus.');
     }
 }
-
