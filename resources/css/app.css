@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply font-sans text-slate-700;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        @apply text-slate-900 font-semibold;
+    }
+}
+
+@layer components {
+    .btn-primary {
+        @apply inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-500/40 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300;
+    }
+
+    .card {
+        @apply rounded-3xl border border-slate-200/60 bg-white/90 p-6 shadow-sm shadow-slate-900/5;
+    }
+}

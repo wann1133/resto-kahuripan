@@ -1,0 +1,23 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+// Validate initiate payment payloads
+class InitiatePaymentRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'order_id' => ['required', 'integer', 'exists:orders,id'],
+            'method' => ['required', 'string', 'in:QRIS,CASH'],
+        ];
+    }
+}
+
