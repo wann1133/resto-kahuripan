@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Table;
+use BaconQrCode\Exception\RuntimeException as BaconQrCodeRuntimeException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 // Manage restaurant tables and their QR codes
 class TableController extends Controller
@@ -61,6 +63,33 @@ class TableController extends Controller
         $table->update(['code' => Str::upper(Str::random(6))]);
 
         return redirect()->route('admin.tables.index')->with('success', 'QR code meja diperbarui.');
+    }
+
+    public function download(Table $table)
+    {
+        $targetUrl = url('/t/'.$table->code);
+        $filenameBase = sprintf('qr-meja-%s', Str::slug($table->number) ?: $table->id);
+
+        try {
+            $qrImage = QrCode::format('png')
+                ->margin(2)
+                ->size(512)
+                ->generate($targetUrl);
+
+            return response($qrImage)
+                ->header('Content-Type', 'image/png')
+                ->header('Content-Disposition', 'attachment; filename="'.$filenameBase.'.png"');
+        } catch (BaconQrCodeRuntimeException $exception) {
+            // Fallback ke SVG jika ekstensi Imagick belum tersedia.
+            $svgImage = (string) QrCode::format('svg')
+                ->margin(2)
+                ->size(512)
+                ->generate($targetUrl);
+
+            return response($svgImage)
+                ->header('Content-Type', 'image/svg+xml')
+                ->header('Content-Disposition', 'attachment; filename="'.$filenameBase.'.svg"');
+        }
     }
 
     public function destroy(Table $table)

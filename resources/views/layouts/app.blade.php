@@ -14,13 +14,19 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body x-data="{ sidebarOpen: false }" class="min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-200 text-slate-900 antialiased">
+        @php
+            $hideAdminShell = ($hideAdminShell ?? false) || request()->routeIs('customer.*');
+            $mainContainerClasses = $hideAdminShell
+                ? 'mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8'
+                : 'mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-10';
+        @endphp
         <div class="flex min-h-screen">
-            @auth
+            @if (auth()->check() && ! $hideAdminShell)
                 @include('layouts.navigation')
-            @endauth
+            @endif
 
             <div class="flex flex-1 flex-col">
-                @auth
+                @if (auth()->check() && ! $hideAdminShell)
                     @php
                         $user = Auth::user();
                         $initial = $user ? \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($user->name, 0, 1)) : 'G';
@@ -77,7 +83,7 @@
                             </div>
                         </div>
                     </header>
-                @endauth
+                @endif
 
                 @isset($header)
                     <div class="border-b border-slate-200/80 bg-white/70 backdrop-blur">
@@ -88,7 +94,7 @@
                 @endisset
 
                 <main class="flex-1">
-                    <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-10">
+                    <div class="{{ $mainContainerClasses }}">
                         <section class="space-y-4">
                             @if (session('success'))
                                 <div class="rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-700 shadow-sm shadow-emerald-100">
@@ -112,10 +118,15 @@
                                 </div>
                             @endif
 
-                            <div class="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-lg shadow-slate-900/5 backdrop-blur">
+                            @if ($hideAdminShell)
                                 {{ $slot ?? '' }}
                                 @yield('content')
-                            </div>
+                            @else
+                                <div class="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-lg shadow-slate-900/5 backdrop-blur">
+                                    {{ $slot ?? '' }}
+                                    @yield('content')
+                                </div>
+                            @endif
                         </section>
                     </div>
                 </main>

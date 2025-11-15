@@ -55,16 +55,28 @@
                                         <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-2">
                                             {!! QrCode::size(64)->generate(url('/t/'.$table->code)) !!}
                                         </div>
-                                        <a href="{{ url('/t/'.$table->code) }}" target="_blank"
-                                            class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-600">
-                                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                                                stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                                <polyline points="15 3 21 3 21 9"></polyline>
-                                                <line x1="10" y1="14" x2="21" y2="3"></line>
-                                            </svg>
-                                            Buka halaman
-                                        </a>
+                                        <div class="flex flex-col gap-2 text-xs font-semibold sm:flex-row sm:flex-wrap">
+                                            <a href="{{ url('/t/'.$table->code) }}" target="_blank"
+                                                class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-slate-600 transition hover:border-emerald-300 hover:text-emerald-600">
+                                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                                                    stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                                                </svg>
+                                                Buka halaman
+                                            </a>
+                                            <a href="{{ route('admin.tables.download', $table) }}"
+                                                class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-slate-600 transition hover:border-sky-300 hover:text-sky-600">
+                                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                                                    stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                                </svg>
+                                                Download QR
+                                            </a>
+                                        </div>
                                     </div>
                                 </td>
                                 <td class="px-5 py-4">

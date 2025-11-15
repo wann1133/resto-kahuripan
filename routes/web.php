@@ -50,6 +50,7 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
     Route::put('tables/{table}', [TableController::class, 'update'])->name('admin.tables.update');
     Route::get('tables/{table}/edit', [TableController::class, 'edit'])->name('admin.tables.edit');
     Route::post('tables/{table}/regenerate', [TableController::class, 'regenerate'])->name('admin.tables.regenerate');
+    Route::get('tables/{table}/download', [TableController::class, 'download'])->name('admin.tables.download');
     Route::delete('tables/{table}', [TableController::class, 'destroy'])->name('admin.tables.destroy');
     Route::get('reports/export/excel', [ReportController::class, 'exportExcel'])->name('admin.reports.export.excel');
     Route::get('reports/export/pdf', [ReportController::class, 'exportPdf'])->name('admin.reports.export.pdf');
