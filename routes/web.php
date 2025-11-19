@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\MenuController as AdminMenuController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TableController;
 use App\Http\Controllers\CashierController;
 use App\Http\Controllers\CustomerController;
@@ -55,6 +56,8 @@ Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
     Route::get('reports/export/excel', [ReportController::class, 'exportExcel'])->name('admin.reports.export.excel');
     Route::get('reports/export/pdf', [ReportController::class, 'exportPdf'])->name('admin.reports.export.pdf');
     Route::get('reports', [ReportController::class, 'index'])->name('admin.reports.index');
+    Route::get('settings/payment', [SettingController::class, 'editPayment'])->name('admin.settings.payment.edit');
+    Route::put('settings/payment', [SettingController::class, 'updatePayment'])->name('admin.settings.payment.update');
 });
 
 Route::middleware('auth')->group(function () {

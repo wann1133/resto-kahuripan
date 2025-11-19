@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Menu;
 use App\Models\Order;
+use App\Models\Setting;
 use App\Models\Table;
 use App\Models\TableSession;
 use App\Models\Payment;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 
 // Handle QR landing flow for dine-in customers
 class CustomerController extends Controller
@@ -58,11 +60,20 @@ class CustomerController extends Controller
             }
         }
 
+        $qrisImagePath = Setting::value('payments.qris_image_path');
+        $qrisStaticUrl = $qrisImagePath && Storage::disk('public')->exists($qrisImagePath)
+            ? Storage::disk('public')->url($qrisImagePath)
+            : null;
+
         return view('customer.checkout', [
             'table' => $table,
             'session' => $session,
             'orders' => $orders,
             'completionMessage' => $completionMessage,
+            'qrisConfig' => [
+                'static_image_url' => $qrisStaticUrl,
+                'has_payload' => (bool) Setting::value('payments.qris_payload'),
+            ],
         ]);
     }
 

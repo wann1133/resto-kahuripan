@@ -103,6 +103,56 @@
                     </div>
 
                     <div id="order-feedback" class="mt-4 text-sm text-slate-500"></div>
+
+                    @php
+                        $initialStatic = $qrisConfig['static_image_url'] ?? null;
+                        $qrisPanelClasses = trim('mt-4 ' . ($initialStatic ? '' : 'hidden') . ' rounded-3xl border border-emerald-100 bg-emerald-50/80 p-5 text-sm text-slate-600');
+                    @endphp
+                    <div id="qris-panel" data-static-src="{{ $initialStatic }}" class="{{ $qrisPanelClasses }}">
+                        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div class="space-y-2">
+                                <p class="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-500">QRIS Dinamis</p>
+                                <h3 class="text-lg font-semibold text-slate-800">Menunggu pembayaran</h3>
+                                <p data-qris-status class="text-sm text-slate-600">
+                                    {{ $initialStatic ? 'Scan QR berikut dan masukkan nominal sesuai total.' : 'Pilih metode QRIS saat checkout untuk memunculkan kode.' }}
+                                </p>
+                                <p class="text-base font-semibold text-slate-900">Total: <span data-qris-amount>Rp 0</span></p>
+                                <button type="button" data-qris-refresh class="hidden inline-flex items-center gap-2 rounded-full border border-emerald-300 px-4 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-white">
+                                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M4 4v6h6" />
+                                        <path d="M20 20v-6h-6" />
+                                        <path d="M5 15a7 7 0 0 0 12 2" />
+                                        <path d="M19 9a7 7 0 0 0-12-2" />
+                                    </svg>
+                                    Buat ulang QR
+                                </button>
+                                <button type="button" data-qris-download class="inline-flex items-center gap-2 rounded-full border border-transparent bg-white px-4 py-2 text-xs font-semibold text-emerald-600 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40" {{ $initialStatic ? '' : 'disabled' }}>
+                                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 3v12" />
+                                        <path d="m8 11 4 4 4-4" />
+                                        <path d="M5 21h14" />
+                                    </svg>
+                                    Download QR
+                                </button>
+                            </div>
+                            <div class="flex flex-col items-center gap-3">
+                                <div data-qris-qr class="flex h-64 w-64 items-center justify-center rounded-3xl border border-white/80 bg-white/80 p-4 text-center text-xs text-slate-400 shadow-inner shadow-emerald-100/80">
+                                    @if ($initialStatic)
+                                        <img src="{{ $initialStatic }}" alt="QRIS statis" class="h-full w-full rounded-xl object-cover" />
+                                    @else
+                                        QRIS akan muncul di sini setelah pesanan dengan metode QRIS berhasil dibuat.
+                                    @endif
+                                </div>
+                                <p data-qris-amount-inline class="text-base font-semibold text-slate-900">
+                                    Nominal: Rp 0
+                                </p>
+                                <div data-qris-static class="{{ $initialStatic ? '' : 'hidden' }} text-center text-xs text-slate-500">
+                                    <p>QR referensi statis</p>
+                                    <img data-qris-static-img src="{{ $initialStatic }}" alt="QR statis" class="mx-auto mt-2 h-28 w-28 rounded-2xl border border-dashed border-slate-300 object-cover" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -162,6 +212,21 @@
             };
             const finalOrderStatuses = new Set(['PAID', 'CLOSED']);
             let hasShownSuccess = false;
+            const paymentInitiateUrl = '{{ route('payment.initiate') }}';
+            const qrisPanel = document.getElementById('qris-panel');
+            const qrisStatusEl = qrisPanel ? qrisPanel.querySelector('[data-qris-status]') : null;
+            const qrisAmountEl = qrisPanel ? qrisPanel.querySelector('[data-qris-amount]') : null;
+            const qrisQrContainer = qrisPanel ? qrisPanel.querySelector('[data-qris-qr]') : null;
+            const qrisStaticWrapper = qrisPanel ? qrisPanel.querySelector('[data-qris-static]') : null;
+            const qrisStaticImage = qrisPanel ? qrisPanel.querySelector('[data-qris-static-img]') : null;
+            const qrisRefreshBtn = qrisPanel ? qrisPanel.querySelector('[data-qris-refresh]') : null;
+            const qrisDownloadBtn = qrisPanel ? qrisPanel.querySelector('[data-qris-download]') : null;
+            const qrisAmountInline = qrisPanel ? qrisPanel.querySelector('[data-qris-amount-inline]') : null;
+            const initialQrisStatic = @json($qrisConfig['static_image_url']);
+            let activeQrisOrderId = null;
+            let qrisDownloadSource = initialQrisStatic
+                ? { type: 'image', value: initialQrisStatic }
+                : null;
 
             function firstNonNull() {
                 for (let index = 0; index < arguments.length; index += 1) {
@@ -232,6 +297,7 @@
             }
 
             const cart = loadCart();
+            resetQrisPanel();
 
             function persistCart() {
                 try {
@@ -249,11 +315,6 @@
                 sessionSuccessMessage.textContent = initialCompletionMessage;
                 hasShownSuccess = true;
 
-                if (Array.isArray(cart) && cart.length > 0) {
-                    cart.length = 0;
-                    persistCart();
-                }
-
                 setTimeout(() => {
                     sessionSuccess.classList.add('hidden');
                     sessionSuccess.classList.remove('flex');
@@ -263,6 +324,194 @@
 
             function formatCurrency(value) {
                 return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
+            }
+
+            function updateQrisAmountDisplay(amount) {
+                const formatted = formatCurrency(amount);
+
+                if (qrisAmountEl) {
+                    qrisAmountEl.textContent = formatted;
+                }
+
+                if (qrisAmountInline) {
+                    qrisAmountInline.textContent = `Nominal: ${formatted}`;
+                }
+            }
+
+            function setQrisDownloadSource(source) {
+                qrisDownloadSource = source;
+
+                if (qrisDownloadBtn) {
+                    qrisDownloadBtn.disabled = ! source;
+                }
+            }
+
+            function triggerDownload(url, filename) {
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            function renderQrPlaceholder() {
+                if (! qrisQrContainer) {
+                    return;
+                }
+
+                qrisQrContainer.innerHTML = '<p class="text-center text-xs text-slate-400">QRIS akan muncul di sini setelah pesanan dengan metode QRIS berhasil dibuat.</p>';
+            }
+
+            function renderQrImage(imageUrl) {
+                if (! qrisQrContainer) {
+                    return;
+                }
+
+                if (imageUrl) {
+                    qrisQrContainer.innerHTML = `<img src="${imageUrl}" alt="QRIS" class="h-full w-full rounded-xl object-cover" />`;
+                    return;
+                }
+
+                renderQrPlaceholder();
+            }
+
+            function resetQrisPanel() {
+                if (! qrisPanel) {
+                    return;
+                }
+
+                activeQrisOrderId = null;
+
+                if (initialQrisStatic) {
+                    qrisPanel.classList.remove('hidden');
+                } else {
+                    qrisPanel.classList.add('hidden');
+                }
+
+                if (qrisStatusEl) {
+                    qrisStatusEl.textContent = initialQrisStatic
+                        ? 'Scan QR berikut dan masukkan nominal sesuai total.'
+                        : 'Pilih metode QRIS saat checkout untuk memunculkan kode.';
+                }
+
+                updateQrisAmountDisplay(0);
+
+                if (initialQrisStatic) {
+                    renderQrImage(initialQrisStatic);
+                } else {
+                    renderQrPlaceholder();
+                }
+
+                if (qrisStaticWrapper && qrisStaticImage) {
+                    if (initialQrisStatic) {
+                        qrisStaticImage.src = initialQrisStatic;
+                        qrisStaticWrapper.classList.remove('hidden');
+                    } else {
+                        qrisStaticWrapper.classList.add('hidden');
+                    }
+                }
+
+                if (qrisRefreshBtn) {
+                    qrisRefreshBtn.classList.add('hidden');
+                }
+
+                setQrisDownloadSource(initialQrisStatic ? { type: 'image', value: initialQrisStatic } : null);
+            }
+
+            async function initiateQris(orderId) {
+                if (! qrisPanel || ! orderId) {
+                    return;
+                }
+
+                activeQrisOrderId = orderId;
+                qrisPanel.classList.remove('hidden');
+
+                if (qrisStatusEl) {
+                    qrisStatusEl.textContent = 'Menyiapkan QRIS...';
+                }
+
+                if (qrisQrContainer) {
+                    qrisQrContainer.innerHTML = '<p class="text-center text-xs text-slate-400">Menyiapkan QR...</p>';
+                }
+
+                try {
+                    const response = await fetch(paymentInitiateUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                        },
+                        body: JSON.stringify({
+                            order_id: orderId,
+                            method: 'QRIS',
+                        }),
+                    });
+
+                    if (! response.ok) {
+                        const error = await response.json().catch(() => ({ message: 'Tidak bisa membuat QRIS.' }));
+                        throw new Error(error.message || 'Tidak bisa membuat QRIS.');
+                    }
+
+                    const data = await response.json();
+
+                    updateQrisAmountDisplay(data.amount || 0);
+
+                    const dynamicImageSrc = data.qr_svg_data_url || null;
+
+                    if (dynamicImageSrc) {
+                        renderQrImage(dynamicImageSrc);
+                    } else if (data.qr_svg) {
+                        qrisQrContainer.innerHTML = data.qr_svg;
+                    } else if (data.static_image_url || initialQrisStatic) {
+                        renderQrImage(data.static_image_url || initialQrisStatic);
+                    } else if (qrisQrContainer) {
+                        qrisQrContainer.innerHTML = '<p class="text-center text-xs text-rose-500">QR tidak tersedia.</p>';
+                    }
+
+                    if (qrisStatusEl) {
+                        qrisStatusEl.textContent = data.is_dynamic
+                            ? 'Scan QR ini menggunakan aplikasi pembayaran Anda.'
+                            : 'QR fallback digunakan. Mohon cek nominal sebelum membayar.';
+                    }
+
+                    if (data.static_image_url && qrisStaticWrapper && qrisStaticImage) {
+                        qrisStaticImage.src = data.static_image_url;
+                        qrisStaticWrapper.classList.remove('hidden');
+                    } else if (qrisStaticWrapper) {
+                        qrisStaticWrapper.classList.add('hidden');
+                    }
+
+                    if (qrisRefreshBtn) {
+                        qrisRefreshBtn.classList.remove('hidden');
+                    }
+
+                    const downloadSource = dynamicImageSrc
+                        ? { type: 'data-url', value: dynamicImageSrc }
+                        : data.qr_svg
+                            ? { type: 'svg', value: data.qr_svg }
+                            : data.static_image_url
+                                ? { type: 'image', value: data.static_image_url }
+                                : initialQrisStatic
+                                    ? { type: 'image', value: initialQrisStatic }
+                                    : null;
+
+                    setQrisDownloadSource(downloadSource);
+
+                    feedbackEl.textContent = 'Silakan lanjutkan pembayaran melalui QRIS.';
+                } catch (error) {
+                    if (qrisStatusEl) {
+                        qrisStatusEl.textContent = error.message || 'Gagal membuat QRIS.';
+                    }
+
+                    if (initialQrisStatic) {
+                        renderQrImage(initialQrisStatic);
+                    } else if (qrisQrContainer) {
+                        qrisQrContainer.innerHTML = '<p class="text-center text-xs text-rose-500">QR gagal dimuat.</p>';
+                    }
+
+                    setQrisDownloadSource(initialQrisStatic ? { type: 'image', value: initialQrisStatic } : null);
+                }
             }
 
             function updateCountBadge() {
@@ -347,6 +596,7 @@
                 }
 
                 hasShownSuccess = true;
+                hideQrisPanel();
 
                 cart.length = 0;
                 persistCart();
@@ -416,6 +666,39 @@
                 });
             }
 
+            if (qrisRefreshBtn) {
+                qrisRefreshBtn.addEventListener('click', () => {
+                    if (activeQrisOrderId) {
+                        initiateQris(activeQrisOrderId);
+                    }
+                });
+            }
+
+            if (qrisDownloadBtn) {
+                qrisDownloadBtn.addEventListener('click', () => {
+                    if (! qrisDownloadSource) {
+                        return;
+                    }
+
+                    if (qrisDownloadSource.type === 'svg') {
+                        const blob = new Blob([qrisDownloadSource.value], { type: 'image/svg+xml' });
+                        const url = URL.createObjectURL(blob);
+                        triggerDownload(url, 'qr-dinamis.svg');
+                        URL.revokeObjectURL(url);
+                        return;
+                    }
+
+                    if (qrisDownloadSource.type === 'data-url') {
+                        triggerDownload(qrisDownloadSource.value, 'qr-dinamis.svg');
+                        return;
+                    }
+
+                    if (qrisDownloadSource.type === 'image') {
+                        triggerDownload(qrisDownloadSource.value, 'qr-statis.png');
+                    }
+                });
+            }
+
             orderForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
 
@@ -428,6 +711,7 @@
                 feedbackEl.textContent = 'Mengirim pesanan...';
 
                 const formData = new FormData(orderForm);
+                const selectedMethod = formData.get('payment_method');
                 const payload = {
                     table_code: tableCode,
                     notes: formData.get('notes'),
@@ -438,7 +722,7 @@
                         notes: item.notes,
                     })),
                     payment: {
-                        method: formData.get('payment_method'),
+                        method: selectedMethod,
                     },
                 };
 
@@ -470,6 +754,12 @@
 
                     feedbackEl.textContent = data && data.message ? data.message : 'Pesanan berhasil dikirim.';
                     appendStatus(order);
+
+                    if (selectedMethod === 'QRIS') {
+                        await initiateQris(order.id);
+                } else {
+                    resetQrisPanel();
+                }
                 } catch (error) {
                     feedbackEl.textContent = error.message || 'Terjadi kesalahan saat mengirim pesanan.';
                 } finally {
@@ -500,6 +790,10 @@
                     sessionSuccess.classList.remove('flex');
                 }
                 renderStatusList();
+
+                if (activeQrisOrderId && merged.id && Number(merged.id) === Number(activeQrisOrderId) && merged.latest_payment_status === 'SUCCESS') {
+                    resetQrisPanel();
+                }
             }
 
             function isOrderActive(status) {
@@ -704,8 +998,3 @@
         })();
     </script>
 @endsection
-
-
-
-
-
