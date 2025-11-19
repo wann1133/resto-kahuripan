@@ -36,24 +36,37 @@ class PaymentController extends Controller
         }
 
         if ($method === 'QRIS') {
+            $staticImage = $this->qrisImageUrl();
             $payload = $this->buildDynamicQrisPayload((float) $order->grand_total);
-            $svgPayload = $payload ?? $this->fallbackPayload($order, $payment);
+
+            if (! $payload) {
+                return response()->json([
+                    'message' => 'Gunakan QR statis untuk pembayaran.',
+                    'payment_id' => $payment->id,
+                    'amount' => (float) $order->grand_total,
+                    'qr_svg' => null,
+                    'qr_svg_data_url' => null,
+                    'qr_payload' => null,
+                    'static_image_url' => $staticImage,
+                    'is_dynamic' => false,
+                ]);
+            }
 
             $svg = QrCode::format('svg')
                 ->size(240)
                 ->margin(2)
-                ->generate($svgPayload);
+                ->generate($payload);
             $svgDataUri = 'data:image/svg+xml;base64,' . base64_encode($svg);
 
             return response()->json([
-                'message' => $payload ? 'QRIS dinamis berhasil dibuat.' : 'QRIS fallback berhasil dibuat.',
+                'message' => 'QRIS dinamis berhasil dibuat.',
                 'payment_id' => $payment->id,
                 'amount' => (float) $order->grand_total,
                 'qr_svg' => $svg,
                 'qr_svg_data_url' => $svgDataUri,
                 'qr_payload' => $payload,
-                'static_image_url' => $this->qrisImageUrl(),
-                'is_dynamic' => (bool) $payload,
+                'static_image_url' => $staticImage,
+                'is_dynamic' => true,
             ]);
         }
 
@@ -162,16 +175,6 @@ class PaymentController extends Controller
         }
 
         return strtoupper(str_pad(dechex($crc), 4, '0', STR_PAD_LEFT));
-    }
-
-    private function fallbackPayload(Order $order, Payment $payment): string
-    {
-        return json_encode([
-            'order_code' => $order->code,
-            'amount' => $order->grand_total,
-            'table' => optional($order->tableSession->table)->number,
-            'payment_id' => $payment->id,
-        ]);
     }
 
     private function qrisImageUrl(): ?string

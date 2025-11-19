@@ -111,10 +111,10 @@
                     <div id="qris-panel" data-static-src="{{ $initialStatic }}" class="{{ $qrisPanelClasses }}">
                         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div class="space-y-2">
-                                <p class="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-500">QRIS Dinamis</p>
-                                <h3 class="text-lg font-semibold text-slate-800">Menunggu pembayaran</h3>
+                                <p class="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-500">Kode QRIS</p>
+                                <h3 class="text-lg font-semibold text-slate-800">Scan untuk bayar</h3>
                                 <p data-qris-status class="text-sm text-slate-600">
-                                    {{ $initialStatic ? 'Scan QR berikut dan masukkan nominal sesuai total.' : 'Pilih metode QRIS saat checkout untuk memunculkan kode.' }}
+                                    {{ $initialStatic ? 'Gunakan QR berikut dengan aplikasi pembayaran Anda.' : 'Pilih metode QRIS saat checkout untuk memunculkan kode.' }}
                                 </p>
                                 <p class="text-base font-semibold text-slate-900">Total: <span data-qris-amount>Rp 0</span></p>
                                 <button type="button" data-qris-refresh class="hidden inline-flex items-center gap-2 rounded-full border border-emerald-300 px-4 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-white">
@@ -391,7 +391,7 @@
 
                 if (qrisStatusEl) {
                     qrisStatusEl.textContent = initialQrisStatic
-                        ? 'Scan QR berikut dan masukkan nominal sesuai total.'
+                        ? 'Gunakan QR berikut dengan aplikasi pembayaran Anda.'
                         : 'Pilih metode QRIS saat checkout untuk memunculkan kode.';
                 }
 
@@ -472,7 +472,7 @@
                     if (qrisStatusEl) {
                         qrisStatusEl.textContent = data.is_dynamic
                             ? 'Scan QR ini menggunakan aplikasi pembayaran Anda.'
-                            : 'QR fallback digunakan. Mohon cek nominal sebelum membayar.';
+                            : 'Gunakan QR berikut dengan aplikasi pembayaran Anda.';
                     }
 
                     if (data.static_image_url && qrisStaticWrapper && qrisStaticImage) {
@@ -483,7 +483,7 @@
                     }
 
                     if (qrisRefreshBtn) {
-                        qrisRefreshBtn.classList.remove('hidden');
+                        qrisRefreshBtn.classList.toggle('hidden', ! data.is_dynamic);
                     }
 
                     const downloadSource = dynamicImageSrc
